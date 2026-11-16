@@ -4,6 +4,8 @@ import AppKit
 final class RingView: NSView {
     private let effect = NSVisualEffectView()
     private let mask = CAShapeLayer()
+    private let submenuEffect = NSVisualEffectView()
+    private let submenuMask = CAShapeLayer()
     private let surface = Surface()
     private let isPreview: Bool
     private var icons: [UUID: NSImage] = [:]
@@ -49,16 +51,19 @@ final class RingView: NSView {
     init(frame: NSRect, isPreview: Bool = false) {
         self.isPreview = isPreview
         super.init(frame: frame)
-        effect.material = .popover
-        effect.state = .active
-        effect.blendingMode = isPreview ? .withinWindow : .behindWindow
-        effect.wantsLayer = true
-        effect.layer?.mask = mask
-        mask.fillRule = .evenOdd
-        mask.fillColor = NSColor.white.cgColor
-        effect.frame = bounds
-        effect.autoresizingMask = [.width, .height]
-        addSubview(effect)
+        for (backdrop, shapeMask) in [(effect, mask), (submenuEffect, submenuMask)] {
+            backdrop.material = .popover
+            backdrop.state = .active
+            backdrop.blendingMode = isPreview ? .withinWindow : .behindWindow
+            backdrop.wantsLayer = true
+            backdrop.layer?.mask = shapeMask
+            shapeMask.fillRule = .evenOdd
+            shapeMask.fillColor = NSColor.white.cgColor
+            backdrop.frame = bounds
+            backdrop.autoresizingMask = [.width, .height]
+            addSubview(backdrop)
+        }
+        submenuEffect.isHidden = true
         surface.wantsLayer = true
         surface.render = { [weak self] in self?.render() }
         surface.frame = bounds
@@ -101,15 +106,19 @@ final class RingView: NSView {
         redraw()
     }
 
-    func showPreviewGroup(_ group: RingItem?) {
+    func showPreviewGroup(_ group: RingItem?, animated: Bool = false) {
+        timer?.invalidate()
+        timer = nil
         if let prior = shownGroup?.children {
             for child in prior { icons.removeValue(forKey: child.id) }
         }
         shownGroup = group
         requestedGroup = group
         for child in group?.children ?? [] { icons[child.id] = child.icon() }
-        arc = group == nil ? 0 : 1
+        let hasChildren = group?.children?.isEmpty == false
+        arc = hasChildren && !animated ? 1 : 0
         redraw()
+        if hasChildren && animated { animate() }
     }
 
     var preferredPanelSize: CGFloat {
@@ -173,7 +182,7 @@ final class RingView: NSView {
         guard !isShowingContextMenu else { return }
         focusedIndex = nil
         hoverPoint = point
-        let hovered = item(at: point)
+        let hovered = hoverItem(at: point)
         if hovered?.id == requestedGroup?.id
             || hovered.map({ child in requestedGroup?.children?.contains(where: { $0.id == child.id }) == true }) == true {
             cancelScheduledClose()
@@ -408,7 +417,10 @@ final class RingView: NSView {
         }
         let childOutset = max(outerBandWidth / 2,
                               childIconSize * (1 + 2 * visualSettings.magnification) / sqrt(2) + 4)
-        maximumExtent = max(baseMainRadius + mainOutset, (outerRadii.values.max() ?? 0) + childOutset)
+        let animationRoom = visualSettings.animationStyle.extraRadialRoom
+            + (visualSettings.animationStyle == .spring ? childIconSize * 0.08 : 0)
+        let submenuExtent = (outerRadii.values.max() ?? 0) + childOutset + animationRoom
+        maximumExtent = max(baseMainRadius + mainOutset, submenuExtent)
     }
 
     private let iconGap: CGFloat = 10
@@ -462,6 +474,7 @@ final class RingView: NSView {
         var end: Double
         var angles: [Double]
         var openingScale: CGFloat
+        var glassOpacity: CGFloat
     }
 
     private func outerArc(for group: RingItem) -> Arc? {
@@ -470,13 +483,50 @@ final class RingView: NSView {
               let parent = items.firstIndex(where: { $0.id == group.id }) else { return nil }
         let middle = mainAngles[parent]
         let progress = ease(arc)
-        let radius = baseRadius * zoom
-        let openingScale = max(0.08, progress)
+        let style = visualSettings.animationStyle
+        let radius = (baseRadius + style.extraRadialRoom * (1 - progress)) * zoom
+        let angularScale: CGFloat
+        let iconScale: CGFloat
+        let glassOpacity: CGFloat
+        switch style {
+        case .fan:
+            angularScale = max(0.08, progress)
+            iconScale = angularScale
+            glassOpacity = min(1, arc * 4)
+        case .slide:
+            angularScale = 1
+            iconScale = 0.8 + 0.2 * progress
+            glassOpacity = min(1, arc * 1.7)
+        case .cascade:
+            angularScale = 1
+            iconScale = 1
+            glassOpacity = min(1, arc * 1.7)
+        case .spring:
+            angularScale = max(0.25, ease(min(1, arc * 1.65)))
+            let remaining = arc - 1
+            let spring = 1 + 2.7 * remaining * remaining * remaining + 1.7 * remaining * remaining
+            iconScale = 0.45 + 0.55 * spring
+            glassOpacity = min(1, arc * 2.4)
+        }
         let angles = packedAngles(children, radius: radius, size: childIconSize * zoom, middle: middle)
-            .map { middle + ($0 - middle) * openingScale }
+            .map { middle + ($0 - middle) * angularScale }
         let start = angles[0] - 0.018
         let end = angles[angles.count - 1] + 0.018
-        return Arc(radius: radius, start: start, end: end, angles: angles, openingScale: openingScale)
+        return Arc(radius: radius, start: start, end: end, angles: angles,
+                   openingScale: iconScale, glassOpacity: glassOpacity)
+    }
+
+    private func childOpacity(index: Int, count: Int) -> CGFloat {
+        switch visualSettings.animationStyle {
+        case .fan:
+            let delay = min(0.34, Double(index) * 0.07)
+            return min(1, max(0, (arc - delay) * 2))
+        case .cascade:
+            let delay = 0.6 * CGFloat(index) / CGFloat(max(1, count - 1))
+            return ease(min(1, max(0, (arc - delay) / 0.4)))
+        case .slide, .spring:
+            return min(1, arc * 1.9)
+        }
     }
 
     private func animate() {
@@ -605,19 +655,64 @@ final class RingView: NSView {
         submenuGeometry = arc > 0 ? shownGroup.flatMap(outerArc) : nil
         submenuPath = submenuGeometry.map(outerShape)
         // The backdrop and the drawn border use the very same paths for this frame.
-        let combined = CGMutablePath()
-        combined.addPath(mainPath)
-        if let submenuPath { combined.addPath(submenuPath) }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         mask.frame = effect.bounds
+        submenuMask.frame = submenuEffect.bounds
         // The backdrop layer uses a bottom-left origin, unlike the ring view.
         var flip = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height)
-        mask.path = combined.copy(using: &flip)
+        mask.path = mainPath.copy(using: &flip)
+        submenuMask.path = submenuPath?.copy(using: &flip)
         effect.alphaValue = 0.84 * min(1, intro * 2.8)
+        submenuEffect.isHidden = submenuGeometry == nil
+        submenuEffect.alphaValue = effect.alphaValue * (submenuGeometry?.glassOpacity ?? 0)
         surface.needsDisplay = true
         surface.displayIfNeeded()
         CATransaction.commit()
+    }
+
+    private func hoverItem(at point: CGPoint) -> RingItem? {
+        if let item = item(at: point) { return item }
+        if let item = paddedHoverItem(at: point, entries: items, angles: mainAngles,
+                                      radius: mainRadius, width: mainWidth * zoom,
+                                      iconSize: mainIconSize, path: mainPath) {
+            return item
+        }
+        if let group = shownGroup, group.id == requestedGroup?.id, arc > 0.04,
+           let children = group.children, let layout = submenuGeometry, let submenuPath {
+            return paddedHoverItem(at: point, entries: children, angles: layout.angles,
+                                   radius: layout.radius, width: outerWidth,
+                                   iconSize: childIconSize * zoom * layout.openingScale, path: submenuPath)
+        }
+        return nil
+    }
+
+    private func paddedHoverItem(at point: CGPoint, entries: [RingItem], angles: [Double],
+                                 radius: CGFloat, width: CGFloat, iconSize: CGFloat, path: CGPath) -> RingItem? {
+        guard let first = angles.first, let last = angles.last else { return nil }
+        let middle = (first + last) / 2
+        let offset = atan2(point.y - center.y, point.x - center.x) - middle
+        let angle = middle + atan2(sin(offset), cos(offset))
+        guard let nearest = angles.indices.min(by: { abs(angles[$0] - angle) < abs(angles[$1] - angle) })
+        else { return nil }
+
+        if path.contains(point, using: .evenOdd) { return entries[nearest] }
+        guard let right = angles.firstIndex(where: { $0 >= angle }), right > 0,
+              right < entries.count else { return nil }
+
+        // Bridge the gap at the visible height of the lifted icons as well as on the ring.
+        let left = right - 1
+        func outerEdge(_ index: Int) -> CGFloat {
+            let strength = magnification[entries[index].id] ?? 0
+            return radius + radialLift(size: iconSize, strength: strength)
+                + iconSize * (1 + visualSettings.magnification * strength) / 2
+        }
+        let fraction = (angle - angles[left]) / (angles[right] - angles[left])
+        let outer = outerEdge(left) * (1 - fraction) + outerEdge(right) * fraction
+        let pointerRadius = distance(point, center)
+        guard pointerRadius >= radius - width / 2,
+              pointerRadius <= max(radius + width / 2, outer) else { return nil }
+        return entries[nearest]
     }
 
     private func item(at point: CGPoint) -> RingItem? {
@@ -643,7 +738,7 @@ final class RingView: NSView {
             let nearest = children.indices.min {
                 distance(point, iconCenter($0)) < distance(point, iconCenter($1))
             }
-            if let nearest {
+            if let nearest, childOpacity(index: nearest, count: children.count) > 0.15 {
                 let item = children[nearest]
                 let strength = magnification[item.id] ?? 0
                 let radius = size * (1 + visualSettings.magnification * strength) / 2
@@ -672,15 +767,15 @@ final class RingView: NSView {
         if let group = shownGroup, let children = group.children, let value = expandedArc,
            let submenuPath {
             context.saveGState()
-            context.setAlpha(CGFloat(min(1, arc * 4)))
+            context.setAlpha(value.glassOpacity * min(1, intro * 2.8))
             glass(submenuPath, context)
+            context.restoreGState()
             for (index, child) in children.enumerated() where child.id != highlighted {
-                drawChild(child, index: index, arc: value, context: context)
+                drawChild(child, index: index, count: children.count, arc: value, context: context)
             }
             if let index = children.firstIndex(where: { $0.id == highlighted }) {
-                drawChild(children[index], index: index, arc: value, context: context)
+                drawChild(children[index], index: index, count: children.count, arc: value, context: context)
             }
-            context.restoreGState()
         }
 
         for index in items.indices where items[index].id != highlighted {
@@ -708,13 +803,12 @@ final class RingView: NSView {
         }
     }
 
-    private func drawChild(_ item: RingItem, index: Int, arc value: Arc, context: CGContext) {
+    private func drawChild(_ item: RingItem, index: Int, count: Int, arc value: Arc, context: CGContext) {
         let strength = magnification[item.id] ?? 0
         let theta = value.angles[index]
         let size = childIconSize * zoom * value.openingScale
         let point = liftedIcon(radius: value.radius, angle: theta, size: size, strength: strength)
-        let delay = min(0.34, Double(index) * 0.07)
-        let alpha = min(1, max(0, (arc - delay) * 2))
+        let alpha = childOpacity(index: index, count: count)
         drawIcon(icons[item.id], at: point, size: size * (1 + visualSettings.magnification * strength),
                  lift: strength, alpha: alpha, running: runningItems.contains(item.id), context: context)
     }

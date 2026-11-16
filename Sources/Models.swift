@@ -94,6 +94,26 @@ struct Shortcut: Codable, Equatable {
     ]
 }
 
+enum SubmenuAnimation: String, Codable, CaseIterable {
+    case fan
+    case slide
+    case cascade
+    case spring
+
+    var title: String {
+        switch self {
+        case .fan: return "扇形展开"
+        case .slide: return "外侧滑入"
+        case .cascade: return "逐个淡入"
+        case .spring: return "轻盈回弹"
+        }
+    }
+
+    var extraRadialRoom: CGFloat {
+        self == .slide ? 26 : 0
+    }
+}
+
 struct Appearance: Codable {
     var hoverDelay = 0.30
     var animationDuration = 0.32
@@ -102,7 +122,9 @@ struct Appearance: Codable {
     var initialRingWidth: Double?
     var magnification = 0.48
     var glow = 0.65
+    var submenuAnimation: SubmenuAnimation?
 
+    var animationStyle: SubmenuAnimation { submenuAnimation ?? .fan }
     var ringWidth: Double { initialRingWidth ?? 44 }
 }
 

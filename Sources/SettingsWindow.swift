@@ -11,6 +11,7 @@ final class SettingsWindow: NSWindowController, NSTableViewDataSource, NSTableVi
     private let childTable = NSTableView()
     private let childTitle = NSTextField(labelWithString: "分组应用")
     private let shortcut = NSPopUpButton()
+    private let submenuAnimation = NSPopUpButton()
     private let login = NSButton(checkboxWithTitle: "登录时启动", target: nil, action: nil)
     private let shortcutStatus = NSTextField(labelWithString: "")
     private var mainButtons: [NSButton] = []
@@ -67,10 +68,8 @@ final class SettingsWindow: NSWindowController, NSTableViewDataSource, NSTableVi
         controls.spacing = 12
 
         let effects = appearanceControls()
-        ringPreview.prepare(config.items, appearance: config.appearance ?? Appearance())
-        let previewLabel = NSTextField(labelWithString: "实时预览 · 选中分组可查看子菜单")
-        previewLabel.textColor = .secondaryLabelColor
-        previewLabel.font = .systemFont(ofSize: 11)
+        let playPreview = NSButton(title: "播放预览", target: self, action: #selector(playSubmenuPreview))
+        playPreview.bezelStyle = .rounded
 
         let mainTitle = NSTextField(labelWithString: "主环")
         let main = column(table: mainTable, label: mainTitle, action: #selector(mainAction(_:)), lane: .main)
@@ -78,7 +77,7 @@ final class SettingsWindow: NSWindowController, NSTableViewDataSource, NSTableVi
         let reset = NSButton(title: "恢复默认布局…", target: self, action: #selector(resetLayout))
         reset.bezelStyle = .inline
 
-        for view in [title, hint, controls, effects, ringPreview, previewLabel, main, child, reset, shortcutStatus] {
+        for view in [title, hint, controls, effects, ringPreview, playPreview, main, child, reset, shortcutStatus] {
             view.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(view)
         }
@@ -95,9 +94,9 @@ final class SettingsWindow: NSWindowController, NSTableViewDataSource, NSTableVi
             ringPreview.leadingAnchor.constraint(equalTo: content.centerXAnchor, constant: 36),
             ringPreview.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -40),
             ringPreview.topAnchor.constraint(equalTo: controls.topAnchor),
-            ringPreview.bottomAnchor.constraint(equalTo: previewLabel.topAnchor, constant: -2),
-            previewLabel.bottomAnchor.constraint(equalTo: effects.bottomAnchor),
-            previewLabel.centerXAnchor.constraint(equalTo: ringPreview.centerXAnchor),
+            ringPreview.bottomAnchor.constraint(equalTo: playPreview.topAnchor, constant: -4),
+            playPreview.bottomAnchor.constraint(equalTo: effects.bottomAnchor),
+            playPreview.centerXAnchor.constraint(equalTo: ringPreview.centerXAnchor),
             main.topAnchor.constraint(equalTo: effects.bottomAnchor, constant: 18),
             main.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             main.trailingAnchor.constraint(equalTo: content.centerXAnchor, constant: -8),
@@ -143,10 +142,38 @@ final class SettingsWindow: NSWindowController, NSTableViewDataSource, NSTableVi
             effectValues.append(value)
             return [label, slider, value]
         }
-        let grid = NSGridView(views: rows)
+        submenuAnimation.addItems(withTitles: SubmenuAnimation.allCases.map(\.title))
+        submenuAnimation.selectItem(at: SubmenuAnimation.allCases.firstIndex(of: appearance.animationStyle) ?? 0)
+        submenuAnimation.target = self
+        submenuAnimation.action = #selector(changeSubmenuAnimation)
+        submenuAnimation.setAccessibilityLabel("子菜单动画")
+        let animationRow: [NSView] = [NSTextField(labelWithString: "子菜单动画"), submenuAnimation, NSView()]
+        let grid = NSGridView(views: rows + [animationRow])
         grid.rowSpacing = 7
         grid.columnSpacing = 14
         return grid
+    }
+
+    @objc private func changeSubmenuAnimation() {
+        let index = submenuAnimation.indexOfSelectedItem
+        guard SubmenuAnimation.allCases.indices.contains(index) else { return }
+        var appearance = config.appearance ?? Appearance()
+        appearance.submenuAnimation = SubmenuAnimation.allCases[index]
+        config.appearance = appearance
+        save()
+        playSubmenuPreview()
+    }
+
+    @objc private func playSubmenuPreview() {
+        var previewItems = config.items
+        let selection = selectedGroup.map { config.items[$0] }
+        var group = selection?.children?.isEmpty == false ? selection : previewItems.first { $0.children?.isEmpty == false }
+        if group == nil {
+            previewItems = Configuration.initial.items
+            group = previewItems.first { $0.children?.isEmpty == false }
+        }
+        ringPreview.prepare(previewItems, appearance: config.appearance ?? Appearance())
+        ringPreview.showPreviewGroup(group, animated: true)
     }
 
     private func appearanceLabel(_ index: Int, _ value: Double) -> String {
@@ -255,6 +282,7 @@ final class SettingsWindow: NSWindowController, NSTableViewDataSource, NSTableVi
         childTitle.stringValue = selectedGroup.map { config.items[$0].name + " · 分组应用" } ?? "选择主环中的分组"
         childTable.deselectAll(nil)
         childTable.reloadData()
+        ringPreview.prepare(config.items, appearance: config.appearance ?? Appearance())
         ringPreview.showPreviewGroup(selectedGroup.map { config.items[$0] })
         updateButtons()
     }
@@ -349,10 +377,10 @@ final class SettingsWindow: NSWindowController, NSTableViewDataSource, NSTableVi
             table.selectRowIndexes(IndexSet(integer: selection), byExtendingSelection: false)
             table.scrollRowToVisible(selection)
         } else { table.deselectAll(nil) }
-        ringPreview.prepare(config.items, appearance: config.appearance ?? Appearance())
         if lane == .main {
             refreshChildren()
         } else {
+            ringPreview.prepare(config.items, appearance: config.appearance ?? Appearance())
             ringPreview.showPreviewGroup(selectedGroup.map { config.items[$0] })
         }
         updateButtons()
