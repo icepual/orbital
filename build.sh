@@ -13,7 +13,7 @@ mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Resources" \
 arch="$(uname -m)"
 xcrun swiftc -O -whole-module-optimization -target "$arch-apple-macosx14.0" \
   -module-cache-path "$build_dir/ModuleCache" \
-  Sources/*.swift -o "$staged_app/Contents/MacOS/Orbital"
+  Sources/**/*.swift -o "$staged_app/Contents/MacOS/Orbital"
 cp Info.plist "$staged_app/Contents/Info.plist"
 "$staged_app/Contents/MacOS/Orbital" --make-icon "$stage/Orbital.iconset"
 iconutil -c icns "$stage/Orbital.iconset" -o "$staged_app/Contents/Resources/Orbital.icns"
