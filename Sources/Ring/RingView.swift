@@ -2,6 +2,11 @@ import AppKit
 
 @MainActor
 final class RingView: NSView {
+    private enum KeyboardFocus {
+        case main(UUID)
+        case submenu(groupID: UUID, itemID: UUID)
+    }
+
     private let effect = NSVisualEffectView()
     private let mask = CAShapeLayer()
     private let submenuEffect = NSVisualEffectView()
@@ -21,7 +26,7 @@ final class RingView: NSView {
     private var closeTimer: Timer?
     private var timer: Timer?
     private var previousFrame = 0.0
-    private var focusedIndex: Int?
+    private var keyboardFocus: KeyboardFocus?
     private var items: [RingItem] = []
     private(set) var isShowingContextMenu = false
     var onChoose: ((RingItem) -> Void)?
@@ -71,7 +76,7 @@ final class RingView: NSView {
         stopAnimationTimer()
         metrics = RingMetrics(items: items, appearance: ringAppearance)
         animation.prepare(isPreview: isPreview, reducedMotion: reducedMotion)
-        focusedIndex = nil
+        keyboardFocus = nil
         if !isPreview { observeRunningApps() }
         syncIcons(reloadTop: true)
         redraw()
@@ -104,7 +109,7 @@ final class RingView: NSView {
         cancelScheduledClose()
         stopAnimationTimer()
         animation.suspend()
-        focusedIndex = nil
+        keyboardFocus = nil
         icons = icons.filter { pair in items.contains { $0.id == pair.key } }
         currentLayout = nil
     }
@@ -168,7 +173,7 @@ final class RingView: NSView {
 
     private func updatePointer(at point: CGPoint) {
         guard !isShowingContextMenu else { return }
-        focusedIndex = nil
+        keyboardFocus = nil
         let layout = currentLayout ?? makeLayout()
         let hovered = RingHitTester.item(at: point, in: layout, mode: .padded)
         let requestedChildren = Set(requestedGroup?.children?.map(\.id) ?? [])
@@ -214,10 +219,12 @@ final class RingView: NSView {
         }
     }
 
-    override func mouseEntered(with event: NSEvent) { mouseMoved(with: event) }
+    override func mouseEntered(with event: NSEvent) {
+        if keyboardFocus == nil { mouseMoved(with: event) }
+    }
 
     override func mouseExited(with event: NSEvent) {
-        guard !isShowingContextMenu else { return }
+        guard !isShowingContextMenu, keyboardFocus == nil else { return }
         cancelDwell()
         updateHover(nil)
         scheduleClose()
@@ -249,6 +256,7 @@ final class RingView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        keyboardFocus = nil
         let point = convert(event.locationInWindow, from: nil)
         let layout = currentLayout ?? makeLayout()
         if let item = RingHitTester.item(at: point, in: layout, mode: .exact) {
@@ -279,6 +287,7 @@ final class RingView: NSView {
         action.target = self
         menu.addItem(action)
 
+        keyboardFocus = nil
         cancelDwell()
         cancelScheduledClose()
         isShowingContextMenu = true
@@ -300,36 +309,108 @@ final class RingView: NSView {
         if !app.terminate() { NSSound.beep() }
     }
 
-    // Arrow keys traverse the visible entries, Enter activates and Tab opens the system launcher.
     override func keyDown(with event: NSEvent) {
-        cancelDwell()
-        cancelScheduledClose()
-        let visible = items + (requestedGroup?.children ?? [])
         switch event.keyCode {
         case 48:
             onCenter?()
         case 123, 125, 124, 126:
-            guard !visible.isEmpty else { return }
+            cancelDwell()
+            cancelScheduledClose()
             let forward = event.keyCode == 124 || event.keyCode == 125
-            let index = focusedIndex ?? (forward ? -1 : 0)
-            focusedIndex = (index + visible.count + (forward ? 1 : -1)) % visible.count
-            updateHover(visible[focusedIndex!].id)
+            moveKeyboardFocus(forward: forward)
         case 36, 76:
-            if let focusedIndex, visible.indices.contains(focusedIndex) {
-                select(visible[focusedIndex])
-            } else {
-                onCenter?()
-            }
+            guard !event.isARepeat else { return }
+            cancelDwell()
+            cancelScheduledClose()
+            activateKeyboardFocus()
         default:
             super.keyDown(with: event)
         }
+    }
+
+    private func moveKeyboardFocus(forward: Bool) {
+        func next(in entries: [RingItem], after id: UUID?) -> RingItem? {
+            guard !entries.isEmpty else { return nil }
+            guard let index = entries.firstIndex(where: { $0.id == id }) else {
+                return forward ? entries.first : entries.last
+            }
+            return entries[(index + entries.count + (forward ? 1 : -1)) % entries.count]
+        }
+
+        switch keyboardFocus {
+        case .submenu(let groupID, let itemID):
+            guard let group = items.first(where: { $0.id == groupID }),
+                  let children = group.children,
+                  let item = next(in: children, after: itemID) else { return }
+            keyboardFocus = .submenu(groupID: groupID, itemID: item.id)
+            updateHover(item.id)
+        case .main(let id):
+            if let item = next(in: items, after: id) { focusMainItem(item) }
+        case nil:
+            let hovered = animation.state.highlightedID
+            let mainID = items.contains(where: { $0.id == hovered })
+                ? hovered : animation.state.requestedGroupID
+            if let item = next(in: items, after: mainID) { focusMainItem(item) }
+        }
+    }
+
+    private func activateKeyboardFocus() {
+        switch keyboardFocus {
+        case .main(let id):
+            guard let item = items.first(where: { $0.id == id }) else { return }
+            if let children = item.children {
+                guard let first = children.first else { return }
+                keyboardFocus = .submenu(groupID: id, itemID: first.id)
+                showKeyboardPreview(of: item, highlighted: first.id)
+            } else {
+                select(item)
+            }
+        case .submenu(let groupID, let itemID):
+            if let item = items.first(where: { $0.id == groupID })?.children?.first(where: { $0.id == itemID }) {
+                select(item)
+            }
+        case nil:
+            onCenter?()
+        }
+    }
+
+    private func focusMainItem(_ item: RingItem) {
+        keyboardFocus = .main(item.id)
+        showKeyboardPreview(of: item, highlighted: item.id)
+    }
+
+    private func showKeyboardPreview(of item: RingItem, highlighted id: UUID) {
+        if item.children?.isEmpty == false {
+            if animation.requestGroup(item.id) { syncIcons() }
+        } else {
+            animation.clearRequestedGroup()
+        }
+        animation.setHighlighted(id)
+        animateIfNeeded()
+    }
+
+    @discardableResult func goBack() -> Bool {
+        if case .submenu(let groupID, _) = keyboardFocus,
+           let parent = items.first(where: { $0.id == groupID }) {
+            focusMainItem(parent)
+            return true
+        }
+        guard animation.state.requestedGroupID != nil else { return false }
+        if case .main = keyboardFocus {
+            cancelDwell()
+            cancelScheduledClose()
+            animation.clearRequestedGroup()
+            animateIfNeeded()
+            return true
+        }
+        return collapse()
     }
 
     @discardableResult func collapse() -> Bool {
         guard animation.state.requestedGroupID != nil else { return false }
         cancelScheduledClose()
         animation.collapse()
-        focusedIndex = nil
+        keyboardFocus = nil
         animateIfNeeded()
         NSAccessibility.post(element: self, notification: .layoutChanged)
         return true

@@ -1,245 +1,131 @@
 <p align="center">
-  <img src="Docs/images/icon.png" width="112" alt="环启应用图标">
+  <img src="Docs/images/icon.png" width="96" height="96" alt="环启应用图标">
 </p>
 
 <h1 align="center">环启 · Orbital</h1>
 
 <p align="center">
-  <strong>把常用 App，收进一个圆环。</strong><br>
-  原生 macOS 环形启动器 · 菜单栏常驻 · 零第三方依赖
+  <strong>用一个圆环启动常用应用。</strong><br>
+  macOS 菜单栏启动器，支持自定义分组、外圈子菜单和两层键盘导航。
 </p>
 
 <p align="center">
-  <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-1c1b22?style=flat-square&amp;logo=apple&amp;logoColor=white">
-  <img alt="Swift + AppKit" src="https://img.shields.io/badge/Swift-AppKit-f05138?style=flat-square&amp;logo=swift&amp;logoColor=white">
-  <img alt="No dependencies" src="https://img.shields.io/badge/dependencies-none-6d4aff?style=flat-square">
+  <img alt="macOS 14 及以上" src="https://img.shields.io/badge/macOS-14%2B-24242B?style=flat-square&amp;logo=apple&amp;logoColor=white">
+  <img alt="Swift 和 AppKit" src="https://img.shields.io/badge/Swift-AppKit-F05138?style=flat-square&amp;logo=swift&amp;logoColor=white">
+  <img alt="无第三方依赖" src="https://img.shields.io/badge/dependencies-none-7154D8?style=flat-square">
 </p>
 
 <p align="center">
-  <a href="#功能">功能</a> ·
-  <a href="#界面">界面</a> ·
-  <a href="#快捷键">快捷键</a> ·
-  <a href="#构建">构建</a> ·
-  <a href="#分发说明">分发</a> ·
-  <a href="#常见问题">常见问题</a>
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#界面一览">界面一览</a> ·
+  <a href="#键盘操作">键盘操作</a> ·
+  <a href="#设置">设置</a> ·
+  <a href="#开发与分发">开发与分发</a>
 </p>
 
 <p align="center">
-  <a href="Docs/images/main.png">
-    <img src="Docs/images/main.png" alt="环启环形主界面" width="860">
-  </a>
+  <a href="Docs/images/main.png"><img src="Docs/images/main.png" alt="桌面中央的环启主环，底部留有缺口" width="840"></a><br>
+  <sub>按 <kbd>⌥</kbd> + <kbd>Space</kbd> 呼出主环，点击图标启动应用。</sub>
 </p>
-<p align="center"><sub><kbd>⌥</kbd> + <kbd>Space</kbd> 呼出 · 悬停放大 · 分组展开外圈</sub></p>
 
----
+## 快速开始
 
-## 功能
-
-### 呼出与环形主菜单
-
-- 默认按 `⌥ 空格` 呼出/收起，菜单栏的环形图标也可以打开。
-- 快捷键冲突时自动尝试备用组合，菜单栏会显示当前实际可用的快捷键。
-- 主环最多放 **16 项**，每个分组最多放 **18 个应用**。
-- 圆环半径按项目数量自动调整，图标多时环会自动变大。
-
-### 悬停与分组子菜单
-
-- 鼠标移到图标上会放大图标并显示名称，相邻图标按距离依次放大。
-- 悬停在分组上约 0.3 秒后展开外圈子菜单；离开分组和子菜单后自动收起。
-- 四种子菜单展开样式：**扇形展开、外侧滑入、逐个淡入、轻盈回弹**，支持设置中切换和实时预览。
-- 点击应用直接启动；点击分组展开；移开分组、点击圆环外或按 `Esc` 收起。
-
-### 全部应用与快速搜索
-
-- 按 `Tab`，或从菜单栏选择「全部应用」，打开 macOS 原生应用浏览器（旧版系统为 Launchpad）。
-- 在圆环打开时直接输入文字，会打开环启自己的快速搜索列表，支持**名称、拼音、首字母**匹配。
-- 应用列表会读取系统应用目录、个人 Applications 目录，以及手动选进圆环的应用。
-- 正在运行的应用会在图标旁显示一个小圆点；右键图标可以「打开」或「退出」。
-
-### 外观与设置
-
-- 添加、移除、排序主环项目和分组应用；双击编辑名称、图标或目标应用。
-- 调整子菜单延迟、动画时长、初始图标大小、初始半径、圆环宽度、悬停放大和边框外发光。
-- 选择子菜单动画并实时预览，或一键恢复默认布局。
-- 所有设置保存在本机 `UserDefaults`，不需要额外配置文件。
-
-### 菜单栏、登录与无障碍
-
-- 菜单栏常驻（`LSUIElement`），不占用 Dock 图标。
-- 可开启「登录时启动」，随系统登录自动运行。
-- 支持 VoiceOver：主环、分组子菜单、应用名称和「运行中」状态都有无障碍标签。
-- 遵循系统「减少动态效果」设置，关闭不必要的放大与过渡动画。
-
----
-
-## 界面
-
-### 分组子菜单
-
-<p align="center">
-  <a href="Docs/images/submenu.png">
-    <img src="Docs/images/submenu.png" alt="分组子菜单与悬停标签" width="800">
-  </a>
-</p>
-<p align="center"><sub>悬停分组展开外圈；悬停应用显示名称并放大</sub></p>
-
-### 子菜单动画
-
-<p align="center">
-  <a href="Docs/images/submenu.gif">
-    <img src="Docs/images/submenu.gif" alt="分组子菜单展开动画" width="600">
-  </a>
-</p>
-<p align="center"><sub>GIF 为循环演示，实际动画约 0.32 秒</sub></p>
-
-### 设置与实时预览
-
-<p align="center">
-  <a href="Docs/images/settings.png">
-    <img src="Docs/images/settings.png" alt="环启设置窗口" width="800">
-  </a>
-</p>
-<p align="center"><sub>主环/分组编辑、外观滑杆、动画选择和实时预览</sub></p>
-
----
-
-## 快捷键
-
-| 操作 | 快捷键 |
-|---|---|
-| 呼出 / 收起圆环 | <kbd>⌥</kbd> + <kbd>Space</kbd>（可在设置中更换） |
-| 打开全部应用 | <kbd>Tab</kbd> 或菜单栏「全部应用」 |
-| 快速搜索 | 圆环打开时直接输入 |
-| 在圆环中移动选择 | <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> |
-| 打开当前项 | <kbd>Return</kbd> |
-| 返回 / 收起 | <kbd>Esc</kbd> |
-| 打开设置 | <kbd>⌘</kbd> + <kbd>,</kbd> |
-| 打开 / 退出应用 | 右键应用图标 |
-
-> [!NOTE]
-> 「全部应用」打开的是 macOS 系统应用浏览器；环启自己的快速搜索列表由「在圆环中直接输入」打开。
-
----
-
-## 构建
-
-> [!NOTE]
-> 需要 macOS 14+，以及 Apple 命令行开发工具（Command Line Tools）或 Xcode。
+需要 **macOS 14 或更新版本**，以及 Apple 命令行开发工具或 Xcode。已下载源码的话，直接在项目目录执行最后两行。
 
 ```sh
+git clone https://github.com/icepual/orbital.git
+cd orbital
 ./build.sh
+open "./环启.app"
 ```
 
-脚本会以当前 Mac 的架构编译，并在项目目录生成经临时签名的「环启.app」。重新构建前请先退出正在运行的环启。
+启动后，按 **⌥ 空格** 呼出或收起圆环。也可以点菜单栏的环形图标，选择「呼出圆环」。默认快捷键冲突时，菜单栏会显示实际启用的组合。
 
-当前 `build.sh` 只构建本机架构（Apple Silicon 上为 arm64），不会自动生成 universal binary。
+| 想做什么 | 怎么做 |
+| --- | --- |
+| 启动常用应用 | 点击主环图标。悬停时图标放大并显示名称。 |
+| 查看分组 | 悬停在分组上片刻，或点击分组，应用会沿外圈展开。 |
+| 搜索应用 | 呼出圆环后直接打字，支持名称、拼音和首字母。 |
+| 浏览全部应用 | 按 <kbd>Tab</kbd>，打开 macOS 的系统应用浏览器。 |
+| 查看或退出运行中的应用 | 图标朝圆心的一侧会显示运行圆点。右键菜单按状态提供「打开」或「退出」。 |
 
-### 测试
+## 界面一览
+
+| 外圈子菜单 | 设置与实时预览 |
+| :---: | :---: |
+| [<img src="Docs/images/submenu.png" alt="外圈子菜单展开，并显示被选中应用的名称" width="400">](Docs/images/submenu.png) | [<img src="Docs/images/settings.png" alt="环启设置窗口，包含外观滑块、实时预览和分组编辑" width="400">](Docs/images/settings.png) |
+| 子菜单沿主环外侧展开，父分组保持放大。 | 拖动滑块看效果，或在下方编辑主环与分组。 |
+
+<details>
+<summary><strong>播放子菜单展开动图</strong></summary>
+
+<p align="center">
+  <img src="Docs/images/submenu.gif" alt="环启子菜单从分组图标外侧展开" width="480">
+</p>
+
+</details>
+
+## 键盘操作
+
+用方向键选中主环上的分组，外圈会**立即预览**，焦点还在主环。按一次**回车**进入分组并选中第一项。接下来方向键只在组内移动，再按回车打开选中的应用。
+
+| 快捷键 | 操作 |
+| --- | --- |
+| <kbd>⌥</kbd> + <kbd>Space</kbd> | 呼出或收起圆环，可在设置中更换 |
+| <kbd>←</kbd> / <kbd>↑</kbd> · <kbd>→</kbd> / <kbd>↓</kbd> | 在当前层选上一项或下一项 |
+| <kbd>Return</kbd> | 进入分组或打开选中的应用 |
+| <kbd>Esc</kbd> | 从子菜单回到父分组并保留预览，再按收起预览，继续按可关闭圆环 |
+| <kbd>Tab</kbd> | 打开 macOS 的系统应用浏览器 |
+| <kbd>⌘</kbd> + <kbd>,</kbd> | 在圆环打开时进入设置 |
+
+## 设置
+
+从菜单栏选择「设置…」，修改会自动保存在本机。
+
+- **布局**：主环最多放 16 项，每个分组最多放 18 个应用。可添加、移除和排序，双击项目可编辑名称、图标或目标应用。
+- **分组图标**：从 12 款内置图标中挑选，或导入自己的图片。
+- **外观**：可调初始图标大小、半径、环带宽度、放大倍数和外发光。半径会根据项目数量留出空间。
+- **动画**：可调子菜单延迟和动画时长。内置**扇形展开、外侧滑入、逐个淡入、轻盈回弹**，可在设置里播放预览。
+- **启动**：可开启「登录时启动」。环启常驻菜单栏，隐藏 Dock 图标。
+
+环启为应用名称和运行状态提供 VoiceOver 标签，并遵循系统的「减少动态效果」设置。
+
+<details>
+<summary><strong>常见问题</strong></summary>
+
+**快捷键没反应？** 在菜单栏查看当前实际启用的快捷键，或到设置里更换组合。
+
+**如何用触摸板手势呼出？** 可以在支持自定义手势的工具中，把手势映射到环启的呼出快捷键。
+
+**恢复默认布局会重置什么？** 主环和分组会恢复默认，快捷键与外观设置会保留。
+
+</details>
+
+## 开发与分发
+
+项目使用 **Swift + AppKit**，没有第三方依赖。`./build.sh` 按本机架构编译，在项目目录生成临时签名的 `环启.app`。重新构建前请先退出正在运行的环启。
 
 ```sh
 ./test.sh
 ```
 
-回归检查覆盖环形几何、布局、动画状态机、命中测试和预览缩放；不需要额外依赖，也不会生成 app。
-
----
-
-## 项目结构
+回归检查覆盖环形几何、布局、动画、命中区域和预览缩放。
 
 <details>
-<summary>展开项目结构</summary>
+<summary><strong>源码导览</strong></summary>
 
-<br>
+| 位置 | 用途 |
+| --- | --- |
+| [Launcher.swift](Sources/Launcher.swift) | 应用入口、菜单栏、全局快捷键与应用启动 |
+| [SettingsWindow.swift](Sources/SettingsWindow.swift) | 设置窗口、分组编辑与实时预览 |
+| [CatalogView.swift](Sources/CatalogView.swift) · [Models.swift](Sources/Models.swift) | 快速搜索、应用索引及本地配置 |
+| [GroupIcons.swift](Sources/GroupIcons.swift) | 内置分组图标 |
+| [Sources/Ring/](Sources/Ring/) | 圆环布局、动画、绘制、键盘和鼠标交互、无障碍 |
+| [Tests/RingCoreChecks.swift](Tests/RingCoreChecks.swift) | 核心逻辑的回归检查 |
 
-```text
-Sources/
-  Launcher.swift          App 生命周期、菜单栏、热键、面板、打开应用
-  CatalogView.swift       全部应用列表与搜索
-  SettingsWindow.swift    设置窗口与实时预览
-  Models.swift            配置、应用目标、应用索引和搜索评分
-  GroupIcons.swift        程序化生成的分组图标
-  Ring/
-    RingGeometry.swift    纯几何：半径、角度、抬升、弧线路径
-    RingLayout.swift      每帧布局快照与子菜单弧线
-    RingAnimation.swift   子菜单弧线、悬停放大和开场动画状态机
-    RingHitTester.swift   点击/悬停命中测试
-    RingRenderer.swift    玻璃背景、图标、提示标签绘制
-    RingAccessibility.swift 无障碍元素构建
-    RingView.swift        NSView 外壳、输入与计时器
-Tests/
-  RingCoreChecks.swift    纯核心回归检查
-```
-
-渲染、命中测试和无障碍共用同一份 `RingLayout` 快照；几何与动画状态机不依赖 `NSView`，可以直接在测试中推进。
+圆环的绘制、命中测试和无障碍元素共用同一份布局。配置以 JSON 保存到 `UserDefaults` 的 `launcherConfiguration` 键。
 
 </details>
 
----
-
-## 配置
-
-| 项目 | 说明 |
-|---|---|
-| 配置存储 | `UserDefaults` 的 `launcherConfiguration` 键，JSON 格式 |
-| 自动保存 | 设置窗口中的修改即时保存 |
-| 恢复默认布局 | 只重置主环与分组；快捷键、外观等设置保留 |
-
----
-
-## 分发说明
-
-> [!WARNING]
-> 当前 `build.sh` 使用 ad-hoc 临时签名，只适合在构建它的 Mac 上运行。直接分享给他人会被 Gatekeeper 拦截，提示无法验证开发者或已损坏；较新的 macOS 需要到「系统设置 → 隐私与安全性」手动允许。
-
-正式分享需要：
-
-1. Apple Developer Program 账号；
-2. 使用 **Developer ID Application** 证书签名；
-3. 开启 hardened runtime 并提交 Apple 公证；
-4. 打包成 `.dmg`，对 DMG 签名、公证后 `stapler staple`。
-
-如果暂时没有 Developer ID，比较稳妥的方式是分享源码，让对方在本地运行 `./build.sh`。
-
----
-
-## 常见问题
-
-<details>
-<summary><strong>能用触摸板五指捏合打开吗？</strong></summary>
-
-不能由环启原生实现。五指捏合属于系统 Launchpad/Apps 手势，macOS 没有向第三方 App 开放全局手势重映射接口。可以借助 BetterTouchTool、Swish 等工具把手势映射到 `⌥ 空格`，或直接映射到「打开环启」。
-
-</details>
-
-<details>
-<summary><strong>快捷键冲突怎么办？</strong></summary>
-
-环启会尝试备用快捷键，菜单栏会显示实际可用的组合；也可以在设置的「呼出快捷键」中更换。
-
-</details>
-
-<details>
-<summary><strong>全部应用为什么打开的是系统界面？</strong></summary>
-
-`Tab` / 菜单栏的「全部应用」调用 macOS 原生 Launchpad/Apps；环启自己的应用列表由「在圆环中直接输入」打开。两者用途不同：前者是系统应用浏览器，后者是环启的快速搜索。
-
-</details>
-
-<details>
-<summary><strong>如何完全替代 Launchpad？</strong></summary>
-
-把 `Tab` 和菜单栏「全部应用」改为打开环启内部的应用列表即可，但这需要修改 `Launcher` 的入口逻辑。当前版本保留系统启动器作为兜底。
-
-</details>
-
----
-
-## 开发
-
-- 语言 / 框架：Swift + AppKit，最低 macOS 14。
-- 入口：`Sources/Launcher.swift` 的 `@main`。
-- 热键：Carbon `RegisterEventHotKey`。
-- 视觉：`NSVisualEffectView` + CoreGraphics 自绘。
-- 测试：`./test.sh`。
-
-<p align="center"><sub>Made with Swift + AppKit · No third-party dependencies</sub></p>
+> [!NOTE]
+> 本地构建使用临时签名。对外分发时，需要另行使用 Developer ID 签名并完成 Apple 公证；也可以分享源码，让对方在自己的 Mac 上构建。

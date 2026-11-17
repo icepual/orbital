@@ -236,7 +236,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 return false
             }
             if catalogOpen { closeCatalog() }
-            else if !ring.collapse() { hide() }
+            else if !ring.goBack() { hide() }
             return true
         }
         if !catalogOpen, event.keyCode == 43, event.modifierFlags.contains(.command) {
