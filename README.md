@@ -29,7 +29,7 @@
 <p align="center">
   <img src="Docs/images/submenu.gif" alt="分组子菜单展开动画" width="600">
 </p>
-<p align="center"><sub>GIF 为演示放慢，实际动画约 0.32 秒</sub></p>
+<p align="center"><sub>GIF 为循环演示，实际动画约 0.32 秒</sub></p>
 
 ### 全部应用与快速搜索
 
